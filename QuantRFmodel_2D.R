@@ -81,6 +81,8 @@ pts.ext <- merge(as.data.frame(shp.pts),ov.lst, by="DID")
 ## Save points
 setwd(predfolder)
 write.table(pts.ext, "cop_ncss17pH_h20_covarsc.txt", sep = "\t", row.names = FALSE)
+## Points with extracted covariates already made
+pts.ext <- read.delim("cop_ncss17pH_h20_covarsc.txt") ## Files available on Github repository
 
 ## Prep training data for Random Forest
 pts.ext$prop <- pts.ext$ph_h2o ## UPDATE EVERY TIME
