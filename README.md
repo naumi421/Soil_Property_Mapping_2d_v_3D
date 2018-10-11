@@ -23,5 +23,5 @@ The environmental covariate data used for predictions is quite large and availab
  Travis Nauman, PhD
  Soil Scientist,
  Moab, UT
- tnauman@usgs.gov
+ tnauman@usgs.gov,
  naumi421@gmail.com
