@@ -84,8 +84,9 @@ pts.ext = merge(as.data.frame(shp.pts),ov.lst, by="DID")
 
 ## Save points
 setwd("/home/tnaum/data/BLMsoils/pH_h2o_3D_pedonCV")
-write.table(pts.ext, "UCRB_ncss17_pH_h2o_3D_covarsc.txt", sep = "\t", row.names = FALSE)
-#pts.ext <- read.delim("/home/tnaum/data/BLMsoils/pH_h2o_3D_pedonCV/UCRB_ncss17_pH_h2o_3D_covarsc.txt", stringsAsFactors = F)
+write.table(pts.ext, "cop_ncss17pH_h20_covarsc.txt", sep = "\t", row.names = FALSE)
+## Pre-prepared points with variables extracted.
+pts.ext <- read.delim("cop_ncss17pH_h20_covarsc.txt", stringsAsFactors = F)## File available on repository
 pts.ext$depth <- (pts.ext$hzn_bot+pts.ext$hzn_top)/2
 
 
