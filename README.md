@@ -16,9 +16,11 @@ cop_ncss17_FS_VFS_pct_covarsc.txt: Training points for % wt fine sand + very fin
 cop_ncss17pH_h20_covarsc.txt: Training points for soil 1:1 H2O pH with environmental covariates already extracted.
 cop_ncss17wLIMS_ec12_covarsc.txt: Training points for soil 1:2 H2O electrical conductivity with environmental covariates already extracted.
 
-The environmental covariate data used for predictions is quite large and available at the following link:
+Example maps produced from these scripts for the paper are available at the following repository:
+http://doi.org/10.5281/zenodo.1458273
 
- https://www.dropbox.com/sh/bdbpzok2rm2sybn/AACqvp1Mh4kn0ckFoql3JIMga?dl=0
+The environmental covariate data used for predictions is quite large and available at the following link:
+https://www.dropbox.com/sh/bdbpzok2rm2sybn/AACqvp1Mh4kn0ckFoql3JIMga?dl=0
  
  Travis Nauman, PhD,
  Soil Scientist,
