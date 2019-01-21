@@ -19,6 +19,7 @@ cop_ncss17wLIMS_ec12_covarsc.txt: Training points for soil 1:2 H2O electrical co
 Example maps produced from these scripts for the paper are available at the following repository:
 
 Version 1: http://doi.org/10.5281/zenodo.1458273
+
 Version 2: http://doi.org/10.5281/zenodo.2545882
    - Includes updated 2D EC RPI raster after correcting an error with the 95% interquantile range used in calculations
 
