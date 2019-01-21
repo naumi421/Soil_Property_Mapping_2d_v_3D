@@ -14,9 +14,13 @@ QuantRFmodel_2D.R: 2D approach workflow script
 QuantRFmodel_3D.R: 3D approach workflow script
 
 Data:
+
 cop_ncss17SOC__covarsc.txt: Training points for soil organic carbon model with environmental covariates already extracted.
+
 cop_ncss17_FS_VFS_pct_covarsc.txt: Training points for % wt fine sand + very fine sand model with environmental covariates already extracted.
+
 cop_ncss17pH_h20_covarsc.txt: Training points for soil 1:1 H2O pH with environmental covariates already extracted.
+
 cop_ncss17wLIMS_ec12_covarsc.txt: Training points for soil 1:2 H2O electrical conductivity with environmental covariates already extracted.
 
 Example maps produced from these scripts for the paper are available at the following repository:
