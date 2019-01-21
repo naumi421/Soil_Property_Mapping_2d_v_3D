@@ -6,8 +6,11 @@ Two scripts are provided that develop a full worflow taking field soil observati
 Nauman, T.W., Duniway, M.C., In Revision. Relative prediction intervals reveal larger uncertainty in 3D approaches to predictive digital soil mapping of soil properties with legacy data. For: Geoderma.
 
 Files:
+
 Scripts:
+
 QuantRFmodel_2D.R: 2D approach workflow script
+
 QuantRFmodel_3D.R: 3D approach workflow script
 
 Data:
