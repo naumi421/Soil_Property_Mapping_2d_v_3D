@@ -188,36 +188,97 @@ writeRaster(PIwidth, overwrite=TRUE,filename=paste(prop,"2D",d,"cm_2D_QRF_95PI_w
 # writeRaster(PIwidth_bt, overwrite=TRUE,filename=paste(prop,d,"cm_2D_QRF_95PI_width_bt.tif",sep="_"), options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
 # writeRaster(PIrelwidth_bt, overwrite=TRUE,filename=paste(prop,d,"cm_2D_QRF_95PI_relwidth_bt.tif",sep="_"), options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
 
-
-
-##################### Run Cross Validation ######################################
-trainx = gsub(".tif","", cov.grids)
-trainx = c(trainx)
-trainx = pts.extc[c(trainx)]
-trainy = pts.extc[c("prop")]
-set.seed(41)
-## rfcv runs a cross val and tests variable importance
+################### Manual Cross validation - RPI ################################
+pts.extcvm <- pts.ext
+pts.extcvm <- subset(pts.extcvm, as.numeric(pts.extcvm$hzn_top) <= 00 & as.numeric(pts.extcvm$hzn_bot) > 00)
+pts.extcvm <- pts.extcvm[c(ptspred.list)]
+pts.extcvm <- na.omit(pts.extcvm)# Remove any record with NA's (in any column - be careful)
+pts.extcvm  <- subset(pts.extcvm, pts.extcvm$sand_f_vf_psa != "NA")
 nfolds <- 10
-cv.rf = rfcv(trainx, trainy$prop, cv.fold = nfolds, proximity=FALSE, ntree=100, keep.forest=TRUE) # Adjust if transformed e.g. log(trainy$prop)
-# par(mar=c(5, 4, 4, 2) + 0.1)
-# with(cv.rf, plot(n.var, error.cv, log="x", type="o", lwd=2))
-# Now put the full cross val out of the rfcv
-pts.extc$cvpred = cv.rf$predicted$`40` ## the '#' at end corresponds to the number of variables included should = number of vars used
-pts.extc$cvpred_bt <- pts.extc$cvpred # back transformation step: Update if needed for stats
-pts.extc$prop_t <- pts.extc$prop # transformation step: update formula if needed for stats
-cv.RMSE = sqrt(mean(((pts.extc$prop_t) - pts.extc$cvpred)^2, na.rm=TRUE))
-cv.Rsquared = 1-var((pts.extc$prop_t) - pts.extc$cvpred, na.rm=TRUE)/var((pts.extc$ph_h2o), na.rm=TRUE)
-## Backtransformed stats if needed
-cv.RMSE_bt = sqrt(mean(((pts.extc$prop) - pts.extc$cvpred_bt)^2, na.rm=TRUE))
-cv.Rsquared_bt = 1-var((pts.extc$prop) - pts.extc$cvpred_bt, na.rm=TRUE)/var((pts.extc$ph_h2o), na.rm=TRUE)
-## Create CV summary stats table
-setwd(predfolder)
-CVdf <- data.frame(cv.RMSE, cv.Rsquared, cv.RMSE_bt, cv.Rsquared_bt)
-names(CVdf) <- c("cv.RMSE","cv.Rsquared","cv.RMSE_bt", "cv.Rsquared_bt")
-write.table(CVdf, paste("CVstats", prop, d, "cm.txt",sep="_"), sep = "\t", row.names = FALSE)
+pts.extcvm$folds <- sample.int(nfolds,size =length(pts.extcvm[,1]),replace=T)
+pts.extcvm$prop <- pts.extcvm$sand_f_vf_psa
+pts.extcvm$prop_t <- pts.extcvm$prop ## UPDATE: tranform if needed else just create new version of prop
+formulaStringCVm <- as.formula(paste('prop_t ~', paste(gsub(".tif","", cov.grids), collapse="+")))
+#for (g in seq(nfolds)){
+CV_factorRF <- function(g,pts.extcvm, formulaStringCVm){
+  traindf <- subset(pts.extcvm, pts.extcvm$folds != g)
+  testdf <- subset(pts.extcvm, pts.extcvm$folds == g)
+  xtrain.t <- as.matrix(traindf[c(gsub(".tif","", cov.grids))])
+  ytrain.t <- c(as.matrix(traindf$prop_t))
+  rf.pcv <- quantregForest(x=xtrain.t, y=ytrain.t, importance=TRUE, ntree=100, keep.forest=TRUE)
+  rf.pcvc <- rf.pcv
+  class(rf.pcvc) <- "randomForest"
+  traindf$pcvpred <- predict(rf.pcvc, newdata=traindf)
+  testdf$pcvpred <- predict(rf.pcvc, newdata=testdf)
+  #traindf$pcvpredpre <- predict(rf.pcv, newdata=traindf, what=c(0.5)) ## If median is desired
+  #testdf$pcvpredpre <- predict(rf.pcv, newdata=testdf, what=c(0.5)) ## If median is desired
+  testdf$pcvpredpre.025 <- predict(rf.pcv, newdata=testdf, what=c(0.025))
+  testdf$pcvpredpre.975 <- predict(rf.pcv, newdata=testdf, what=c(0.975))
+  return(testdf)
+}
+snowfall::sfInit(parallel=TRUE, cpus=3)
+snowfall::sfExport("pts.extcvm","formulaStringCVm","CV_factorRF","cov.grids")
+snowfall::sfLibrary(randomForest)
+snowfall::sfLibrary(quantregForest)
+pts.extpcv <- snowfall::sfLapply(1:nfolds, function(g){CV_factorRF(g, pts.extcvm=pts.extcvm,formulaStringCVm=formulaStringCVm)})
+snowfall::sfStop()
+pts.extpcv <- plyr::rbind.fill(pts.extpcv)
+pts.extpcv$pcvpred <- as.numeric(pts.extpcv$pcvpred)
+## PCV statistics
+cvp.RMSE = sqrt(mean((pts.extpcv$prop_t - pts.extpcv$pcvpred)^2, na.rm=TRUE))
+cvp.Rsquared = 1-var(pts.extpcv$prop_t - pts.extpcv$pcvpred, na.rm=TRUE)/var(pts.extpcv$prop_t, na.rm=TRUE)
+## Back transformed: create pcvpred_bt even if not tranformed for cv.depth function
+pts.extpcv$pcvpred_bt <- pts.extpcv$pcvpred  ## UPDATE: backtranform if needed else just create new version of prop
+cvp.RMSE_bt = sqrt(mean((pts.extpcv$prop - pts.extpcv$pcvpred_bt)^2, na.rm=TRUE))
+cvp.Rsquared_bt = 1-var(pts.extpcv$prop - pts.extpcv$pcvpred_bt, na.rm=TRUE)/var(pts.extpcv$prop, na.rm=TRUE)
+## Number of SCD samples
+n_scd <- length(pts.extpcv[,1])
+## RPI
+pts.extpcv$pcvpredpre.025_bt <- pts.extpcv$pcvpredpre.025 # UPDATE: backtransform if necessary
+pts.extpcv$pcvpredpre.975_bt <- pts.extpcv$pcvpredpre.975 # UPDATE: backtransform if necessary
+pts.extpcv$abs.resid <- abs(pts.extpcv$prop - pts.extpcv$pcvpred_bt)
+varrange <- as.numeric(quantile(pts.extcvm$prop, probs=c(0.975), na.rm=T)-quantile(pts.extcvm$prop, probs=c(0.025),na.rm=T))
+pts.extpcv$RPI <- (pts.extpcv$pcvpredpre.975_bt - pts.extpcv$pcvpredpre.025_bt)/varrange
+plot(pts.extpcv$abs.resid~pts.extpcv$RPI)
+## Summarize RPI and residuals
+pts.extpcv$rel.abs.resid <- pts.extpcv$abs.resid/varrange
+RPI.cvave <- mean(pts.extpcv$RPI)
+RPI.cvmed <- median(pts.extpcv$RPI)
+rel.abs.res.ave <- mean(pts.extpcv$rel.abs.resid)
+rel.abs.res.med <- median(pts.extpcv$rel.abs.resid)
+## prediction interval coverage probability (PICP)
+PICP <- sum(ifelse(pts.extpcv$prop <= pts.extpcv$pcvpredpre.975_bt & pts.extpcv$prop >= pts.extpcv$pcvpredpre.025_bt,1,0))/length(pts.extpcv[,1])
 ## Create PCV table
+CVdf <- data.frame(cvp.RMSE, cvp.Rsquared, cvp.RMSE_bt, cvp.Rsquared_bt,RPI.cvave,RPI.cvmed,PICP,rel.abs.res.ave,rel.abs.res.med, n_scd)
+names(CVdf) <- c("cvp.RMSE","cvp.Rsquared","cvp.RMSE_bt", "cvp.Rsquared_bt","RPI.CVave","RPI.CVmed","PICP","abs.res.ave","rel.abs.res.med","n_scd")
 setwd(predfolder)
-saveRDS(pts.extc, paste("UCRB",prop, d, "cm_CV_pts.rds", sep="_"))
+write.table(CVdf, paste("PCVstats", prop, d, "cm_wRPI.txt",sep="_"), sep = "\t", row.names = FALSE)
+# plot(pts.extpcv$prop~pts.extpcv$pcvpred_bt)
+# plot(pts.extpcv$prop~pts.extpcv$pcvpred_bt, xlim=c(0,10),ylim=c(0,10))
+# plot(pts.extpcv$prop~pts.extpcv$pcvpred_bt, xlim=c(0,5),ylim=c(0,5))
+# plot(pts.extpcv$prop~pts.extpcv$pcvpred_bt, xlim=c(0,1),ylim=c(0,1))
+# plot(pts.extpcv$prop_t~pts.extpcv$pcvpred)
+#lines(x1,y1, col = 'red')#1:1 line
+## CV plots
+#viri <- c("#440154FF", "#39568CFF", "#1F968BFF", "#73D055FF", "#FDE725FF") # color ramp
+## Observed vs Measured
+# gplt.dcm.2D.CV <- ggplot(data=pts.extpcv, aes(prop_t, pcvpred)) +
+#   stat_binhex(bins = 30) + geom_abline(intercept = 0, slope = 1,lwd=1)  + #xlim(0,100) + ylim(0,100) +
+#   theme(axis.text=element_text(size=8), legend.text=element_text(size=10), axis.title=element_text(size=10),plot.title = element_text(size=10,hjust=0.5)) +
+#   xlab("Measured") + ylab("CV Prediction") + scale_fill_gradientn(name = "log(Count)", trans = "log", colours = rev(viri)) +
+#   ggtitle(paste("Cross val", prop, d, "cm",sep=" "))
+# gplt.dcm.2D.CV
+## Residuals vs RPI
+# gplt.dcm.2D.RPI <- ggplot(data=pts.extpcv, aes(RPI, rel.abs.resid)) +
+#  stat_binhex(bins = 30)  + #xlim(0,2) + #ylim(0,2) +
+#  theme(axis.text=element_text(size=8), legend.text=element_text(size=10), axis.title=element_text(size=10),plot.title = element_text(size=10,hjust=0.5)) +
+#  xlab("RPI") + ylab("95% IQR Relative Absolute CV Residuals") + scale_fill_gradientn(name = "Count", colours = rev(viri)) +
+#  ggtitle(paste("RPI", "f+vf Sands", "0", "cm",sep=" "))
+# gplt.dcm.2D.RPI
+## Save Cross validation graph and data for future plotting
+saveRDS(pts.extpcv, paste("UCRB",prop, d, "cm_CV_pts_RPI.rds", sep="_"))
+
+
 
 ##### Relative PI Interval statistics for different depths
 ## Add new packages for foreach work
