@@ -30,11 +30,7 @@ Version 1: http://doi.org/10.5281/zenodo.1458273
 Version 2: http://doi.org/10.5281/zenodo.2545882
    - Includes updated 2D EC RPI raster after correcting an error with the 95% interquantile range used in calculations
 
-The environmental covariate data used for predictions is quite large and available at the following link:
-https://www.dropbox.com/sh/bdbpzok2rm2sybn/AACqvp1Mh4kn0ckFoql3JIMga?dl=0
 
-The ~600k sample points used to characterize global uncertainty (UCRB_ncss17_sample_subset_covarsc.txt in scripts) are available at the link below. The covariates values have already been extracted for these points. 
-https://www.dropbox.com/s/z0wrp0f6j8fvpn7/UCRB_ncss17_sample_subset_covarsc.txt?dl=0
  
  Travis Nauman, PhD,
  Soil Scientist,
